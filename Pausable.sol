@@ -44,4 +44,5 @@ contract Pausable {
         _pauser = pendingPauser;
         pendingPauser = address(0);
     }
+
 }
