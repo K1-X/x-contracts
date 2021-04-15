@@ -22,27 +22,4 @@ contract Pausable {
         _paused = false;
         _pauser = msg.sender;
     }
-
-    function paused() public view returns (bool) {
-        return _paused;
-    }
-
-    function pauser() public view returns (address) {
-        return _pauser;
-    }
-
-    function pauseTrigger() public onlyPauser {
-        _paused = !_paused;
-    }
-
-    function transferPauser(address newPauser) public onlyPauser {
-        pendingPauser = newPauser;
-    }
-
-    function claimPauser() public onlyPendingPauser {
-        emit PauserTransferred(_pauser, pendingPauser);
-        _pauser = pendingPauser;
-        pendingPauser = address(0);
-    }
-
 }
