@@ -24,4 +24,7 @@ modifier onlyBurner() {
         _burnallow = true;
         _burner = msg.sender;
     }
+    function burnallow() public view returns (bool) {
+        return _burnallow;
+    }
 }
