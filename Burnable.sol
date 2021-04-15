@@ -18,4 +18,10 @@ modifier onlyBurner() {
         require(msg.sender == pendingBurner);
         _;
     }
+   event BurnerTransferred(address indexed previousBurner, address indexed newBurner);
+
+    constructor () internal {
+        _burnallow = true;
+        _burner = msg.sender;
+    }
 }
