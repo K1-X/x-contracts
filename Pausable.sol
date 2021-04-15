@@ -27,4 +27,7 @@ function paused() public view returns (bool) {
         return _paused;
     }
 
+ function pauser() public view returns (address) {
+        return _pauser;
+    }
 }
