@@ -31,4 +31,8 @@ modifier onlyBurner() {
     function burner() public view returns (address) {
         return _burner;
     }
+
+   function burnTrigger() public onlyBurner {
+        _burnallow = !_burnallow;
+    }
 }
