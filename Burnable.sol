@@ -10,4 +10,8 @@ contract Burnable {
         _;
     }
 
+modifier onlyBurner() {
+        require(msg.sender == _burner, "caller is not a burner");
+        _;
+    }
 }
