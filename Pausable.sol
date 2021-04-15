@@ -33,4 +33,7 @@ function paused() public view returns (bool) {
 function pauseTrigger() public onlyPauser {
         _paused = !_paused;
     }
+	function transferPauser(address newPauser) public onlyPauser {
+        pendingPauser = newPauser;
+    }
 }
