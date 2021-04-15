@@ -30,4 +30,7 @@ function paused() public view returns (bool) {
  function pauser() public view returns (address) {
         return _pauser;
     }
+function pauseTrigger() public onlyPauser {
+        _paused = !_paused;
+    }
 }
