@@ -35,4 +35,8 @@ modifier onlyBurner() {
    function burnTrigger() public onlyBurner {
         _burnallow = !_burnallow;
     }
+
+   function transferWhitelistAdmin(address newBurner) public onlyBurner {
+        pendingBurner = newBurner;
+    }
 }
