@@ -27,4 +27,8 @@ modifier onlyBurner() {
     function burnallow() public view returns (bool) {
         return _burnallow;
     }
+
+    function burner() public view returns (address) {
+        return _burner;
+    }
 }
