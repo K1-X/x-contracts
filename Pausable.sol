@@ -22,4 +22,9 @@ contract Pausable {
         _paused = false;
         _pauser = msg.sender;
     }
+    
+function paused() public view returns (bool) {
+        return _paused;
+    }
+
 }
