@@ -36,4 +36,9 @@ function pauseTrigger() public onlyPauser {
 	function transferPauser(address newPauser) public onlyPauser {
         pendingPauser = newPauser;
     }
+    function claimPauser() public onlyPendingPauser {
+        emit PauserTransferred(_pauser, pendingPauser);
+        _pauser = pendingPauser;
+        pendingPauser = address(0);
+    }
 }
