@@ -14,4 +14,8 @@ modifier onlyBurner() {
         require(msg.sender == _burner, "caller is not a burner");
         _;
     }
+ modifier onlyPendingBurner() {
+        require(msg.sender == pendingBurner);
+        _;
+    }
 }
