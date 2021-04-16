@@ -21,6 +21,8 @@ contract Meltable {
         require(msg.sender == pendingMelterAdmin);
         _;
     }
+
+    event MelterTransferred(address indexed previousMelter, address indexed newMelter);
 }
 
 
