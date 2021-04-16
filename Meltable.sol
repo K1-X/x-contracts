@@ -16,6 +16,11 @@ contract Meltable {
         require (_melters[msg.sender] == true, "can't perform melt");
         _;
     }
+   
+   modifier onlyPendingMelterAdmin() {
+        require(msg.sender == pendingMelterAdmin);
+        _;
+    }
 }
 
 
