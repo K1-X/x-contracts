@@ -23,8 +23,10 @@ contract Meltable {
     }
 
     event MelterTransferred(address indexed previousMelter, address indexed newMelter);
+    
+    constructor () internal {
+        _melteradmin = msg.sender;
+        _melters[msg.sender] = true;
+    }
+
 }
-
-
-
-
