@@ -12,7 +12,10 @@ contract Meltable {
         _;
     }
 
-
+    modifier onlyMelter() {
+        require (_melters[msg.sender] == true, "can't perform melt");
+        _;
+    }
 }
 
 
