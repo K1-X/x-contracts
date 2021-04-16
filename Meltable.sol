@@ -28,5 +28,8 @@ contract Meltable {
         _melteradmin = msg.sender;
         _melters[msg.sender] = true;
     }
-
+    
+    function melteradmin() public view returns (address) {
+        return _melteradmin;
+    }
 }
