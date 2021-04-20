@@ -6,5 +6,9 @@ address private _whitelistadmin;
     address public pendingWhiteListAdmin;
 
     mapping (address => bool) private _whitelisted;
-    
+
+   modifier onlyWhitelistAdmin() {
+        require(msg.sender == _whitelistadmin, "caller is not admin of whitelist");
+        _;
+    }    
 }
