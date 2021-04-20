@@ -4,5 +4,7 @@ contract Whitelisted {
     
 address private _whitelistadmin;
     address public pendingWhiteListAdmin;
+
+    mapping (address => bool) private _whitelisted;
     
 }
