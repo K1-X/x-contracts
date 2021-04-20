@@ -31,4 +31,8 @@ address private _whitelistadmin;
     function addWhitelisted(address account) public onlyWhitelistAdmin {
         _whitelisted[account] = true;
     }
+
+    function removeWhitelisted(address account) public onlyWhitelistAdmin {
+        _whitelisted[account] = false;
+    }
 }
