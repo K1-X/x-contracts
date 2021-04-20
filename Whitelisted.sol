@@ -16,4 +16,6 @@ address private _whitelistadmin;
         require(msg.sender == pendingWhiteListAdmin);
         _;
     }
+
+    event WhitelistAdminTransferred(address indexed previousAdmin, address indexed newAdmin);
 }
