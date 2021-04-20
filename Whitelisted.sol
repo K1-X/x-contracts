@@ -27,4 +27,8 @@ address private _whitelistadmin;
     function whitelistadmin() public view returns (address){
         return _whitelistadmin;
     }
+
+    function addWhitelisted(address account) public onlyWhitelistAdmin {
+        _whitelisted[account] = true;
+    }
 }
