@@ -23,4 +23,8 @@ address private _whitelistadmin;
         _whitelistadmin = msg.sender;
         _whitelisted[msg.sender] = true;
     }
+
+    function whitelistadmin() public view returns (address){
+        return _whitelistadmin;
+    }
 }
