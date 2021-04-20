@@ -18,4 +18,9 @@ address private _whitelistadmin;
     }
 
     event WhitelistAdminTransferred(address indexed previousAdmin, address indexed newAdmin);
+
+    constructor () internal {
+        _whitelistadmin = msg.sender;
+        _whitelisted[msg.sender] = true;
+    }
 }
