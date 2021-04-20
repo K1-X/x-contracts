@@ -11,4 +11,9 @@ address private _whitelistadmin;
         require(msg.sender == _whitelistadmin, "caller is not admin of whitelist");
         _;
     }    
+
+    modifier onlyPendingWhitelistAdmin() {
+        require(msg.sender == pendingWhiteListAdmin);
+        _;
+    }
 }
