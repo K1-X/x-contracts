@@ -35,4 +35,8 @@ address private _whitelistadmin;
     function removeWhitelisted(address account) public onlyWhitelistAdmin {
         _whitelisted[account] = false;
     }
+    function isWhitelisted(address account) public view returns (bool) {
+        return _whitelisted[account];
+    }
+
 }
