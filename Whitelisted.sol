@@ -39,4 +39,8 @@ address private _whitelistadmin;
         return _whitelisted[account];
     }
 
+    function transferWhitelistAdmin(address newAdmin) public onlyWhitelistAdmin {
+        pendingWhiteListAdmin = newAdmin;
+    }
+
 }
