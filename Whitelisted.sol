@@ -43,4 +43,10 @@ address private _whitelistadmin;
         pendingWhiteListAdmin = newAdmin;
     }
 
+   function claimWhitelistAdmin() public onlyPendingWhitelistAdmin {
+        emit WhitelistAdminTransferred(_whitelistadmin, pendingWhiteListAdmin);
+        _whitelistadmin = pendingWhiteListAdmin;
+        pendingWhiteListAdmin = address(0);
+    }
+
 }
