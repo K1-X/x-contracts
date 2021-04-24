@@ -1,0 +1,21 @@
+pragma solidity ^0.5.11;
+
+contract AccountFrozenBalances {
+    using SafeMath for uint256;
+
+    mapping (address => uint256) private frozen_balances;
+
+    function _frozen_add(address _account, uint256 _amount) internal returns (bool) {
+        frozen_balances[_account] = frozen_balances[_account].add(_amount);
+        return true;
+    }
+
+    function _frozen_sub(address _account, uint256 _amount) internal returns (bool) {
+        frozen_balances[_account] = frozen_balances[_account].sub(_amount);
+        return true;
+    }
+
+    function _frozen_balanceOf(address _account) internal view returns (uint) {
+        return frozen_balances[_account];
+    }
+}
