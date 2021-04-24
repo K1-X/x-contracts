@@ -74,4 +74,17 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
     event Melt(address indexed from, uint256 amount);
     event MintFrozen(address indexed to, uint256 amount);
     event FrozenTransfer(address indexed from, address indexed to, uint256 value);
+
+    constructor (string memory _name, string memory _symbol, uint8 _decimals) public {
+        name = _name;
+        symbol = _symbol;
+        decimals = _decimals;
+        totalSupplyLimit = 1024 * 1024 * 1024 * 10 ** decimals;
+        mint(msg.sender, 0);
+        _rules[uint256(RoleType.FUNDER)].setRule(100, yearIntervalBlock, 10);
+        _rules[uint256(RoleType.DEVELOPER)].setRule(100, monthIntervalBlock, 2);
+        _rules[uint256(RoleType.MARKETER)].setRule(100, monthIntervalBlock, 1);
+        _rules[uint256(RoleType.COMMUNITY)].setRule(100, monthIntervalBlock, 10);
+        _rules[uint256(RoleType.SEED)].setRule(100, monthIntervalBlock, 10);
+    }
 }
