@@ -36,8 +36,8 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
     uint256 public monthIntervalBlock = 172800;    
     uint256 public yearIntervalBlock = 2102400;    
 
-    bool public seedPause = true;               
-  
+    bool public seedPause = true;                   
+
     modifier canClaim() {
         require(uint256(_roles[msg.sender]) != uint256(RoleType.Invalid), "Invalid user role");
         if(_roles[msg.sender] == RoleType.SEED){
@@ -45,13 +45,14 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         }
         _;
     }
-   
+
+
     modifier canTransfer() {
         if(paused()){
             require (isWhitelisted(msg.sender) == true, "can't perform an action");
         }
         _;
-    }	     
+    }
 
     modifier canMint(uint256 _amount) {
         require((_totalSupply + _amount) <= totalSupplyLimit, "Mint: Exceed the maximum circulation");
@@ -122,7 +123,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
             return false;
         }
     }
-    
+
     function transferFrom(address sender, address recipient, uint256 amount) public canTransfer returns (bool) {
         require(recipient != address(this), "can't transfer tokens to the contract address");
 
@@ -360,5 +361,4 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
 
         emit Transfer(account, address(this), amount);
     }
-
 }
