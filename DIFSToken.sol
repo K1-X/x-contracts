@@ -57,4 +57,21 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         require((_totalSupply + _amount) <= totalSupplyLimit, "Mint: Exceed the maximum circulation");
         _;
     }
+
+    modifier canBatchMint(uint256[] _amounts) {
+        uint256 mintAmount = 0;
+        for (uint256 i = 0; i < _amounts.length; i++) {
+            mintAmount = mintAmount.add(_amounts[i]);
+        }
+        require(mintAmount <= totalSupplyLimit, "BatchMint: Exceed the maximum circulation");
+        _;
+    }
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    event Freeze(address indexed from, uint256 amount);
+    event Melt(address indexed from, uint256 amount);
+    event MintFrozen(address indexed to, uint256 amount);
+    event FrozenTransfer(address indexed from, address indexed to, uint256 value);
 }
