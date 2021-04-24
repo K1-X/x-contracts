@@ -52,4 +52,9 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         }
         _;
     }	     
+
+    modifier canMint(uint256 _amount) {
+        require((_totalSupply + _amount) <= totalSupplyLimit, "Mint: Exceed the maximum circulation");
+        _;
+    }
 }
