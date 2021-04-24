@@ -45,5 +45,11 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         }
         _;
     }
-	     
+   
+    modifier canTransfer() {
+        if(paused()){
+            require (isWhitelisted(msg.sender) == true, "can't perform an action");
+        }
+        _;
+    }	     
 }
