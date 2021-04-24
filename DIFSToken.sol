@@ -37,6 +37,13 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
     uint256 public yearIntervalBlock = 2102400;    
 
     bool public seedPause = true;               
-
+  
+    modifier canClaim() {
+        require(uint256(_roles[msg.sender]) != uint256(RoleType.Invalid), "Invalid user role");
+        if(_roles[msg.sender] == RoleType.SEED){
+            require(!seedPause, "Seed is not time to unlock yet");
+        }
+        _;
+    }
 	     
 }
