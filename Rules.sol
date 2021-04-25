@@ -7,10 +7,10 @@ library Rules {
     using SafeMath for uint256;
 
     struct Rule {
-        uint256 baseAmount;                 //
-        uint256 intervalFreezeBlock;        //
-        uint256 percent;                    //
-        bool    initRule;                   // 
+        uint256 baseAmount;                
+        uint256 intervalFreezeBlock;        
+        uint256 percent;                   
+        bool    initRule;                   
     }
 
     function setRule(Rule storage rule, uint256 _baseAmount,  uint256 _intervalFreezeBlock, uint256 _percent) internal {
@@ -23,11 +23,15 @@ library Rules {
         rule.initRule = true;
     }
 
-    function freezeAmount(Rule storage rule, uint256 lastFreezeBlock, uint256 currentBlock) internal view returns(uint256) {
+    function freezeAmount(Rule storage rule, uint256 startFrozenBlock, uint256 lastFreezeBlock, uint256 currentBlock) internal view returns(uint256) {
+        require(startFrozenBlock >= lastFreezeBlock, "startFrozenBlockmust be greater than or equal to lastFreezeBlock");
         require(currentBlock >= lastFreezeBlock);
         require(rule.baseAmount > 0);
         require(rule.percent > 0);
-        uint256 factor = currentBlock.sub(lastFreezeBlock).div(rule.intervalFreezeBlock);
+        uint256 actualFactor =  currentBlock.sub(startFrozenBlock).mod(rule.intervalFreezeBlock);
+        uint256 alreadyFactor = lastFreezeBlock.sub(startFrozenBlock).mod(rule.intervalFreezeBlock);
+        require(actualFactor >= alreadyFactor, "invalid factor");
+        uint256 factor = actualFactor - alreadyFactor;
         return rule.baseAmount.mul(rule.percent).mul(factor).div(100);
     }
 }

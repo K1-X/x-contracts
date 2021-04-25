@@ -27,6 +27,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
 
     struct FreezeData {
         address addr;
+        uint256 startBlock;         // freeze block for start.
         uint256 lastFreezeBlock;
     }
 
@@ -36,7 +37,8 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
     uint256 public monthIntervalBlock = 172800;    
     uint256 public yearIntervalBlock = 2102400;    
 
-    bool public seedPause = true;                   
+    bool public seedPause = true;
+    uint256 public seedMeltStartBlock = 0;                   
 
     modifier canClaim() {
         require(uint256(_roles[msg.sender]) != uint256(RoleType.Invalid), "Invalid user role");
@@ -217,35 +219,35 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
 
     function mintFrozenTokensForFunder(address account, uint256 amount) public onlyMinter returns (bool) {
         _roles[account] = uint256(RoleType.FUNDER);
-        _freeze_datas[account] = FreezeData(account, block.number);
+        _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
     function mintFrozenTokensForDeveloper(address account, uint256 amount) public onlyMinter returns (bool) {
         _roles[account] = uint256(RoleType.DEVELOPER);
-        _freeze_datas[account] = FreezeData(account, block.number);
+        _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
     function mintFrozenTokensForMarketer(address account, uint256 amount) public onlyMinter returns (bool) {
         _roles[account] = uint256(RoleType.MARKETER);
-        _freeze_datas[account] = FreezeData(account, block.number);
+        _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
     function mintFrozenTokensForCommunity(address account, uint256 amount) public onlyMinter returns (bool) {
         _roles[account] = uint256(RoleType.COMMUNITY);
-        _freeze_datas[account] = FreezeData(account, block.number);
+        _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
     function mintFrozenTokensForSeed(address account, uint256 amount) public onlyMinter returns (bool) {
         _roles[account] = uint256(RoleType.SEED);
-        _freeze_datas[account] = FreezeData(account, block.number);
+        _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
@@ -263,7 +265,14 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
 
     function claimTokens() public canClaim returns (bool) {
         //Rules.Rule storage rule = _rules[uint256(_roles[msg.sender])];
-        uint256 amount = _rules[uint256(_roles[msg.sender])].freezeAmount(_freeze_datas[msg.sender].lastFreezeBlock, block.number);
+        uint256 lastFreezeBlock = _freeze_datas[msg.sender].lastFreezeBlock;
+        if(uint256(_roles[msg.sender]) == uint256(RoleType.SEED)) {
+            require(!seedPause, "seed pause is true, can't to claim");
+            if(seedMeltStartBlock != 0 && seedMeltStartBlock > lastFreezeBlock) {
+                lastFreezeBlock = seedMeltStartBlock;
+            }
+        }
+        uint256 amount = _rules[uint256(_roles[msg.sender])].freezeAmount(lastFreezeBlock, block.number);
         require(amount > 0, "Melt amount must be greater than 0");
         _melt(msg.sender, amount); 
 
@@ -273,8 +282,9 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         return true;
     }
 
-    function switchSeedPause() onlyOwner public {
-        seedPause = !seedPause;
+    function startSeedPause() onlyOwner public {
+        seedPause = true;
+        seedMeltStartBlock = block.number;
     }
 
     function _transfer(address sender, address recipient, uint256 amount) internal {
