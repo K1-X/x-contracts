@@ -77,6 +77,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
     event Melt(address indexed from, uint256 amount);
     event MintFrozen(address indexed to, uint256 amount);
     event FrozenTransfer(address indexed from, address indexed to, uint256 value);
+    event Claim(address indexed from, uint256 amount);
 
     constructor (string memory _name, string memory _symbol, uint8 _decimals) public {
         name = _name;
@@ -278,7 +279,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
 
         _freeze_datas[msg.sender].lastFreezeBlock = block.number;
 
-        emit Transfer(address(this), msg.sender, amount);
+        emit Claim(msg.sender, amount);
         return true;
     }
 
