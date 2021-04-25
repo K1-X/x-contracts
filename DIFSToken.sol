@@ -8,6 +8,7 @@ import './Pausable.sol';
 import './Mintable.sol';
 import './Meltable.sol';
 import "./Rules.sol";
+import "./TokenRecipient.sol";
 
 contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pausable, Mintable, Meltable {
     using SafeMath for uint256;
@@ -61,7 +62,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         _;
     }
 
-    modifier canBatchMint(uint256[] _amounts) {
+    modifier canBatchMint(uint256[] memory _amounts) {
         uint256 mintAmount = 0;
         for (uint256 i = 0; i < _amounts.length; i++) {
             mintAmount = mintAmount.add(_amounts[i]);
@@ -219,35 +220,35 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
     }
 
     function mintFrozenTokensForFunder(address account, uint256 amount) public onlyMinter returns (bool) {
-        _roles[account] = uint256(RoleType.FUNDER);
+        _roles[account] = RoleType.FUNDER;
         _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
     function mintFrozenTokensForDeveloper(address account, uint256 amount) public onlyMinter returns (bool) {
-        _roles[account] = uint256(RoleType.DEVELOPER);
+        _roles[account] = RoleType.DEVELOPER;
         _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
     function mintFrozenTokensForMarketer(address account, uint256 amount) public onlyMinter returns (bool) {
-        _roles[account] = uint256(RoleType.MARKETER);
+        _roles[account] = RoleType.MARKETER;
         _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
     function mintFrozenTokensForCommunity(address account, uint256 amount) public onlyMinter returns (bool) {
-        _roles[account] = uint256(RoleType.COMMUNITY);
+        _roles[account] = RoleType.COMMUNITY;
         _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
     function mintFrozenTokensForSeed(address account, uint256 amount) public onlyMinter returns (bool) {
-        _roles[account] = uint256(RoleType.SEED);
+        _roles[account] = RoleType.SEED;
         _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
@@ -273,7 +274,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
                 lastFreezeBlock = seedMeltStartBlock;
             }
         }
-        uint256 amount = _rules[uint256(_roles[msg.sender])].freezeAmount(lastFreezeBlock, block.number);
+        uint256 amount = _rules[uint256(_roles[msg.sender])].freezeAmount(_freeze_datas[msg.sender].startBlock, lastFreezeBlock, block.number);
         require(amount > 0, "Melt amount must be greater than 0");
         _melt(msg.sender, amount); 
 
