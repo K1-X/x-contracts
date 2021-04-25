@@ -39,7 +39,14 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
     uint256 public yearIntervalBlock = 2102400;    
 
     bool public seedPause = true;
-    uint256 public seedMeltStartBlock = 0;                   
+    uint256 public seedMeltStartBlock = 0;       
+
+    bool public ruleReady;
+
+    modifier onlyReady(){
+        require(ruleReady, "ruleReady is false");
+        _;
+    }            
 
     modifier canClaim() {
         require(uint256(_roles[msg.sender]) != uint256(RoleType.Invalid), "Invalid user role");
@@ -84,13 +91,42 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
-        totalSupplyLimit = 1024 * 1024 * 1024 * 10 ** decimals;
-        mint(msg.sender, 0);
+        totalSupplyLimit = 1024 * 1024 * 1024 * 10 ** uint256(decimals);
+        //mint(msg.sender, 0);
+        ruleReady = false;
+    }
+
+    function readyRule() public {
+        ruleReady = true;
         _rules[uint256(RoleType.FUNDER)].setRule(100, yearIntervalBlock, 10);
         _rules[uint256(RoleType.DEVELOPER)].setRule(100, monthIntervalBlock, 2);
         _rules[uint256(RoleType.MARKETER)].setRule(100, monthIntervalBlock, 1);
         _rules[uint256(RoleType.COMMUNITY)].setRule(100, monthIntervalBlock, 10);
         _rules[uint256(RoleType.SEED)].setRule(100, monthIntervalBlock, 10);
+    }
+
+    function roleType(address account) public view returns (uint256) {
+        return uint256(_roles[account]);
+    }
+
+    function startBlock(address account) public view returns (uint256) {
+        return _freeze_datas[account].startBlock;
+    }
+
+    function lastFreezeBlock(address account) public view returns (uint256) {
+        return _freeze_datas[account].lastFreezeBlock;
+    }
+
+    function freezeAmount(address account) public view returns(uint256) {
+        uint256 lastFreezeBlock = _freeze_datas[account].lastFreezeBlock;
+        if(uint256(_roles[account]) == uint256(RoleType.SEED)) {
+            require(!seedPause, "seed pause is true, can't to claim");
+            if(seedMeltStartBlock != 0 && seedMeltStartBlock > lastFreezeBlock) {
+                lastFreezeBlock = seedMeltStartBlock;
+            }
+        }
+        uint256 amount = _rules[uint256(_roles[account])].freezeAmount(_freeze_datas[account].startBlock, lastFreezeBlock, block.number);
+        return amount;
     }
 
     function totalSupply() public view returns (uint256) {
@@ -219,35 +255,35 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         return true;
     }
 
-    function mintFrozenTokensForFunder(address account, uint256 amount) public onlyMinter returns (bool) {
+    function mintFrozenTokensForFunder(address account, uint256 amount) public onlyMinter onlyReady returns (bool) {
         _roles[account] = RoleType.FUNDER;
         _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
-    function mintFrozenTokensForDeveloper(address account, uint256 amount) public onlyMinter returns (bool) {
+    function mintFrozenTokensForDeveloper(address account, uint256 amount) public onlyMinter  onlyReady returns (bool) {
         _roles[account] = RoleType.DEVELOPER;
         _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
-    function mintFrozenTokensForMarketer(address account, uint256 amount) public onlyMinter returns (bool) {
+    function mintFrozenTokensForMarketer(address account, uint256 amount) public onlyMinter onlyReady returns (bool) {
         _roles[account] = RoleType.MARKETER;
         _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
-    function mintFrozenTokensForCommunity(address account, uint256 amount) public onlyMinter returns (bool) {
+    function mintFrozenTokensForCommunity(address account, uint256 amount) public onlyMinter onlyReady returns (bool) {
         _roles[account] = RoleType.COMMUNITY;
         _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
-    function mintFrozenTokensForSeed(address account, uint256 amount) public onlyMinter returns (bool) {
+    function mintFrozenTokensForSeed(address account, uint256 amount) public onlyMinter onlyReady returns (bool) {
         _roles[account] = RoleType.SEED;
         _freeze_datas[account] = FreezeData(account, block.number, block.number);
         _mintfrozen(account, amount);
