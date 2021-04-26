@@ -24,12 +24,12 @@ library Rules {
     }
 
     function freezeAmount(Rule storage rule, uint256 startFrozenBlock, uint256 lastFreezeBlock, uint256 currentBlock) internal view returns(uint256) {
-        require(startFrozenBlock >= lastFreezeBlock, "startFrozenBlockmust be greater than or equal to lastFreezeBlock");
+        require(startFrozenBlock <= lastFreezeBlock, "startFrozenBlockmust be greater than or equal to lastFreezeBlock");
         require(currentBlock >= lastFreezeBlock);
         require(rule.baseAmount > 0);
         require(rule.percent > 0);
-        uint256 actualFactor =  currentBlock.sub(startFrozenBlock).mod(rule.intervalFreezeBlock);
-        uint256 alreadyFactor = lastFreezeBlock.sub(startFrozenBlock).mod(rule.intervalFreezeBlock);
+        uint256 actualFactor =  currentBlock.sub(startFrozenBlock).div(rule.intervalFreezeBlock);
+        uint256 alreadyFactor = lastFreezeBlock.sub(startFrozenBlock).div(rule.intervalFreezeBlock);
         require(actualFactor >= alreadyFactor, "invalid factor");
         uint256 factor = actualFactor - alreadyFactor;
         return rule.baseAmount.mul(rule.percent).mul(factor).div(100);

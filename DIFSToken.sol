@@ -321,7 +321,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
     }
 
     function startSeedPause() onlyOwner public {
-        seedPause = true;
+        seedPause = false;
         seedMeltStartBlock = block.number;
     }
 
