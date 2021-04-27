@@ -128,6 +128,9 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
             }
         }
         uint256 amount = _rules[uint256(_roles[account])].freezeAmount(_freeze_datas[account].frozenAmount , _freeze_datas[account].startBlock, lastFreezeBlock, block.number);
+        if(amount > _frozen_balanceOf(msg.sender)) {
+            amount = _frozen_balanceOf(msg.sender);
+        }
         return amount;
     }
 
@@ -323,6 +326,10 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         }
         uint256 amount = _rules[uint256(_roles[msg.sender])].freezeAmount(_freeze_datas[msg.sender].frozenAmount, _freeze_datas[msg.sender].startBlock, lastFreezeBlock, block.number);
         require(amount > 0, "Melt amount must be greater than 0");
+        // border amount
+        if(amount > _frozen_balanceOf(msg.sender)) {
+            amount = _frozen_balanceOf(msg.sender);
+        }
         _melt(msg.sender, amount); 
 
         _freeze_datas[msg.sender].lastFreezeBlock = block.number;
