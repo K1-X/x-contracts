@@ -27,7 +27,8 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
     enum RoleType { Invalid, FUNDER, DEVELOPER, MARKETER, COMMUNITY, SEED }
 
     struct FreezeData {
-        address addr;
+        bool initialzed;
+        uint256 frozenAmount;       // fronzen amount
         uint256 startBlock;         // freeze block for start.
         uint256 lastFreezeBlock;
     }
@@ -50,6 +51,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
 
     modifier canClaim() {
         require(uint256(_roles[msg.sender]) != uint256(RoleType.Invalid), "Invalid user role");
+        require(_freeze_datas[msg.sender].initialzed);
         if(_roles[msg.sender] == RoleType.SEED){
             require(!seedPause, "Seed is not time to unlock yet");
         }
@@ -98,11 +100,11 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
 
     function readyRule() public {
         ruleReady = true;
-        _rules[uint256(RoleType.FUNDER)].setRule(100, yearIntervalBlock, 10);
-        _rules[uint256(RoleType.DEVELOPER)].setRule(100, monthIntervalBlock, 2);
-        _rules[uint256(RoleType.MARKETER)].setRule(100, monthIntervalBlock, 1);
-        _rules[uint256(RoleType.COMMUNITY)].setRule(100, monthIntervalBlock, 10);
-        _rules[uint256(RoleType.SEED)].setRule(100, monthIntervalBlock, 10);
+        _rules[uint256(RoleType.FUNDER)].setRule(yearIntervalBlock, 10);
+        _rules[uint256(RoleType.DEVELOPER)].setRule(monthIntervalBlock, 2);
+        _rules[uint256(RoleType.MARKETER)].setRule(monthIntervalBlock, 1);
+        _rules[uint256(RoleType.COMMUNITY)].setRule(monthIntervalBlock, 10);
+        _rules[uint256(RoleType.SEED)].setRule(monthIntervalBlock, 10);
     }
 
     function roleType(address account) public view returns (uint256) {
@@ -113,7 +115,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         return _freeze_datas[account].startBlock;
     }
 
-    function lastFreezeBlock(address account) public view returns (uint256) {
+    function lastestFreezeBlock(address account) public view returns (uint256) {
         return _freeze_datas[account].lastFreezeBlock;
     }
 
@@ -125,7 +127,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
                 lastFreezeBlock = seedMeltStartBlock;
             }
         }
-        uint256 amount = _rules[uint256(_roles[account])].freezeAmount(_freeze_datas[account].startBlock, lastFreezeBlock, block.number);
+        uint256 amount = _rules[uint256(_roles[account])].freezeAmount(_freeze_datas[account].frozenAmount , _freeze_datas[account].startBlock, lastFreezeBlock, block.number);
         return amount;
     }
 
@@ -135,6 +137,10 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
 
     function balanceOf(address account) public view returns (uint256) {
         return _balances[account].add(_frozen_balanceOf(account));
+    }
+
+    function frozenBalanceOf(address account) public view returns (uint256) {
+        return _frozen_balanceOf(account);
     }
 
     function transfer(address recipient, uint256 amount) public canTransfer returns (bool) {
@@ -256,36 +262,41 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
     }
 
     function mintFrozenTokensForFunder(address account, uint256 amount) public onlyMinter onlyReady returns (bool) {
+        require(!_freeze_datas[account].initialzed, "Funder: specified account already initialzed");
         _roles[account] = RoleType.FUNDER;
-        _freeze_datas[account] = FreezeData(account, block.number, block.number);
+        _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
     function mintFrozenTokensForDeveloper(address account, uint256 amount) public onlyMinter  onlyReady returns (bool) {
+        require(!_freeze_datas[account].initialzed, "Developer: specified account already initialzed");
         _roles[account] = RoleType.DEVELOPER;
-        _freeze_datas[account] = FreezeData(account, block.number, block.number);
+        _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
     function mintFrozenTokensForMarketer(address account, uint256 amount) public onlyMinter onlyReady returns (bool) {
+        require(!_freeze_datas[account].initialzed, "Marketer: specified account already initialzed");
         _roles[account] = RoleType.MARKETER;
-        _freeze_datas[account] = FreezeData(account, block.number, block.number);
+        _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
     function mintFrozenTokensForCommunity(address account, uint256 amount) public onlyMinter onlyReady returns (bool) {
+        require(!_freeze_datas[account].initialzed, "Community: specified account already initialzed");
         _roles[account] = RoleType.COMMUNITY;
-        _freeze_datas[account] = FreezeData(account, block.number, block.number);
+        _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
     function mintFrozenTokensForSeed(address account, uint256 amount) public onlyMinter onlyReady returns (bool) {
+        require(!_freeze_datas[account].initialzed, "Seed: specified account already initialzed");
         _roles[account] = RoleType.SEED;
-        _freeze_datas[account] = FreezeData(account, block.number, block.number);
+        _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
@@ -310,7 +321,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
                 lastFreezeBlock = seedMeltStartBlock;
             }
         }
-        uint256 amount = _rules[uint256(_roles[msg.sender])].freezeAmount(_freeze_datas[msg.sender].startBlock, lastFreezeBlock, block.number);
+        uint256 amount = _rules[uint256(_roles[msg.sender])].freezeAmount(_freeze_datas[msg.sender].frozenAmount, _freeze_datas[msg.sender].startBlock, lastFreezeBlock, block.number);
         require(amount > 0, "Melt amount must be greater than 0");
         _melt(msg.sender, amount); 
 
