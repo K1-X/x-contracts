@@ -98,7 +98,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         ruleReady = false;
     }
 
-    function readyRule() public {
+    function readyRule() onlyOwner public {
         ruleReady = true;
         _rules[uint256(RoleType.FUNDER)].setRule(yearIntervalBlock, 10);
         _rules[uint256(RoleType.DEVELOPER)].setRule(monthIntervalBlock, 2);
@@ -211,7 +211,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         _burnFrozen(account, amount);
     }
 
-    function mintBatchToken(address[] calldata accounts, uint256[] calldata amounts) external onlyMinter returns (bool) {
+    function mintBatchToken(address[] calldata accounts, uint256[] calldata amounts) external onlyMinter canBatchMint(amounts) returns (bool) {
         require(accounts.length > 0, "mintBatchToken: transfer should be to at least one address");
         require(accounts.length == amounts.length, "mintBatchToken: recipients.length != amounts.length");
         for (uint256 i = 0; i < accounts.length; i++) {
@@ -246,7 +246,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         return true;
     }
 
-    function mintFrozenTokens(address account, uint256 amount) public onlyMinter returns (bool) {
+    function mintFrozenTokens(address account, uint256 amount) public onlyMinter canMint(amount) returns (bool) {
         _mintfrozen(account, amount);
         return true;
     }
@@ -261,7 +261,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         return true;
     }
 
-    function mintFrozenTokensForFunder(address account, uint256 amount) public onlyMinter onlyReady returns (bool) {
+    function mintFrozenTokensForFunder(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) returns (bool) {
         require(!_freeze_datas[account].initialzed, "Funder: specified account already initialzed");
         _roles[account] = RoleType.FUNDER;
         _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
@@ -269,7 +269,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         return true;
     }
 
-    function mintFrozenTokensForDeveloper(address account, uint256 amount) public onlyMinter  onlyReady returns (bool) {
+    function mintFrozenTokensForDeveloper(address account, uint256 amount) public onlyMinter  onlyReady canMint(amount) returns (bool) {
         require(!_freeze_datas[account].initialzed, "Developer: specified account already initialzed");
         _roles[account] = RoleType.DEVELOPER;
         _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
@@ -277,7 +277,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         return true;
     }
 
-    function mintFrozenTokensForMarketer(address account, uint256 amount) public onlyMinter onlyReady returns (bool) {
+    function mintFrozenTokensForMarketer(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) returns (bool) {
         require(!_freeze_datas[account].initialzed, "Marketer: specified account already initialzed");
         _roles[account] = RoleType.MARKETER;
         _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
@@ -285,7 +285,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         return true;
     }
 
-    function mintFrozenTokensForCommunity(address account, uint256 amount) public onlyMinter onlyReady returns (bool) {
+    function mintFrozenTokensForCommunity(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) returns (bool) {
         require(!_freeze_datas[account].initialzed, "Community: specified account already initialzed");
         _roles[account] = RoleType.COMMUNITY;
         _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
@@ -293,7 +293,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         return true;
     }
 
-    function mintFrozenTokensForSeed(address account, uint256 amount) public onlyMinter onlyReady returns (bool) {
+    function mintFrozenTokensForSeed(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) returns (bool) {
         require(!_freeze_datas[account].initialzed, "Seed: specified account already initialzed");
         _roles[account] = RoleType.SEED;
         _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
@@ -301,7 +301,7 @@ contract DifsToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pau
         return true;
     }
 
-    function meltBatchTokens(address[] calldata accounts, uint256[] calldata amounts) external onlyMelter canBatchMint(amounts) returns (bool) {
+    function meltBatchTokens(address[] calldata accounts, uint256[] calldata amounts) external onlyMelter returns (bool) {
         require(accounts.length > 0, "mintBatchFrozenTokens: transfer should be to at least one address");
         require(accounts.length == amounts.length, "mintBatchFrozenTokens: recipients.length != amounts.length");
         for (uint256 i = 0; i < accounts.length; i++) {
