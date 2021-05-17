@@ -109,6 +109,7 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
 
     event NewSale(address indexed _th, uint256 _amount, uint256 _tokens, bool _locked);
     event SaleInfo(address indexed _operator, uint256 _ethRatio, uint256 _usdtAmount, uint256 _saleAmount, bool _seedPhase);
+    event Withdrawal(address indexed src, uint wad);
 
     constructor (string memory _name, string memory _symbol) public {
         name = _name;
@@ -119,7 +120,7 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         ruleReady = false;
     }
 
-    function readyRule() onlyOwner public {
+    function readyRule() onlyMinter public {
         ruleReady = true;
         _rules[uint256(RoleType.FUNDER)].setRule(yearIntervalBlock, 10);
         _rules[uint256(RoleType.DEVELOPER)].setRule(monthIntervalBlock, 2);
@@ -403,6 +404,21 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         }
         saleFunds = saleFunds.sub(tokensGenerated);
         NewSale(msg.sender, toFund, tokensGenerated, seedPhase);
+    }
+
+    function withdraw(address _token, address _recipient) public onlyOwner {
+        if (_token == 0x0) {
+            // transfer eth
+            _recipient.transfer(this.balance);
+            Withdrawal(_recipient, this.balance);
+            return;
+        }
+
+        IERC20Token token = IERC20Token(_token);
+        uint balance = token.balanceOf(this);
+        // transfer token
+        token.transfer(_recipient, balance);
+        Withdrawal(_recipient, balance);
     }
 
     function isContract(address _addr) constant internal returns (bool) {
