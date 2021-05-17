@@ -59,7 +59,7 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
 
     modifier canBuy() {
         require(saleSwitch, "saleSwitch is false");
-        require(saleSwitch != 0 && ethRatio != 0 && usdtRatio != 0);
+        require(saleAmount != 0 && ethRatio != 0 && usdtRatio != 0);
         _;
     }
 
