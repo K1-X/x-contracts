@@ -59,7 +59,7 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
 
     modifier canBuy() {
         require(saleSwitch, "saleSwitch is false");
-        require(saleAmount != 0 && ethRatio != 0 && usdtRatio != 0);
+        require(saleFunds != 0 && ethRatio != 0 && usdtRatio != 0);
         _;
     }
 
@@ -338,15 +338,15 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         saleSwitch = _saleSwitch;
     }
 
-    function updateSaleInfo(uint256 _ethRatio, uint256 _usdtRatio, uint256 _saleAmount, bool _seedPhase) external onlyMinter {
+    function updateSaleInfo(uint256 _ethRatio, uint256 _usdtRatio, uint256 _saleFunds, bool _seedPhase) external onlyMinter {
         require(_ethRatio != 0 , "ethRatio cannot be 0");
         require(_usdtRatio != 0 , "usdtRatio cannot be 0");
-        require(_saleAmount > 0, "saleAmount must grater than 0");
+        require(_saleFunds > 0, "saleFunds must grater than 0");
         ethRatio = _ethRatio;
         usdtRatio = _usdtRatio;
-        saleAmount = _saleAmount;
+        saleFunds = _saleFunds;
         seedPhase = _seedPhase;
-        emit SaleInfo(msg.sender, _ethRatio, _usdtRatio, _saleAmount, _seedPhase);
+        emit SaleInfo(msg.sender, _ethRatio, _usdtRatio, _saleFunds, _seedPhase);
     }
 
     /// @dev exchange by eth
@@ -368,10 +368,10 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         if (seedPhase) {
             require(_mintFrozenTokensForSeed(msg.sender, tokensGenerated));
         } else {
-            _mint(account, amount);
+            _mint(msg.sender, tokensGenerated);
         }
         saleFunds = saleFunds.sub(tokensGenerated);
-        NewSale(msg.sender, toFund, tokensGenerated, seedPhase);
+        emit NewSale(msg.sender, toFund, tokensGenerated, seedPhase);
     }
 
     /// @dev exchange by usdt
@@ -389,40 +389,41 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         require(tokensGenerated <= saleFunds);
 
         IERC20Token token = IERC20Token(_token);
-        uint256 balance = token.balanceOf(this);
+        uint256 balance = token.balanceOf(address(this));
         require(_usdtAmount <= balance);
 
         // check: the amount of approve is enough.
-        require(allowance[msg.sender][address(this)] >= _usdtAmount);
+        require(token.allowance(msg.sender, address(this)) >= _usdtAmount);
         token.transferFrom(msg.sender, address(this), _usdtAmount);
         
         // phase: seed, private, public
         if (seedPhase) {
             require(_mintFrozenTokensForSeed(msg.sender, tokensGenerated));
         } else {
-            _mint(account, amount);
+            _mint(msg.sender, tokensGenerated);
         }
         saleFunds = saleFunds.sub(tokensGenerated);
-        NewSale(msg.sender, toFund, tokensGenerated, seedPhase);
+        emit NewSale(msg.sender, toFund, tokensGenerated, seedPhase);
     }
 
-    function withdraw(address _token, address _recipient) public onlyOwner {
-        if (_token == 0x0) {
+    function withdraw(address _token, address payable _recipient) public onlyOwner {
+        if (_token == address(0x0)) {
+            require(_recipient != address(0x0));
             // transfer eth
-            _recipient.transfer(this.balance);
-            Withdrawal(_recipient, this.balance);
+            _recipient.transfer(address(this).balance);
+            emit Withdrawal(_recipient, address(this).balance);
             return;
         }
 
         IERC20Token token = IERC20Token(_token);
-        uint balance = token.balanceOf(this);
+        uint balance = token.balanceOf(address(this));
         // transfer token
         token.transfer(_recipient, balance);
-        Withdrawal(_recipient, balance);
+        emit Withdrawal(_recipient, balance);
     }
 
-    function isContract(address _addr) constant internal returns (bool) {
-        if (_addr == 0) return false;
+    function isContract(address _addr) view internal returns (bool) {
+        if (_addr == address(0x0)) return false;
         uint256 size;
         assembly {
             size := extcodesize(_addr)
@@ -430,7 +431,7 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         return (size > 0);
     }
 
-    function getBlockNumber() internal constant returns (uint256) {
+    function getBlockNumber() internal view returns (uint256) {
         return block.number;
     }
 
