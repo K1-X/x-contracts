@@ -57,6 +57,9 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
 
     mapping (address => uint256) public lastCallBlock;
 
+    // upgrade part
+    uint256 private _totalUpgraded;    
+
     modifier canBuy() {
         require(saleSwitch, "saleSwitch is false");
         require(saleFunds != 0 && ethRatio != 0 && usdtRatio != 0);
@@ -110,6 +113,9 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
     event NewSale(address indexed _th, uint256 _amount, uint256 _tokens, bool _locked);
     event SaleInfo(address indexed _operator, uint256 _ethRatio, uint256 _usdtAmount, uint256 _saleAmount, bool _seedPhase);
     event Withdrawal(address indexed src, uint wad);
+
+    // 
+    event Upgrade(address indexed from, uint256 _value);
 
     constructor (string memory _name, string memory _symbol) public {
         name = _name;
@@ -389,7 +395,7 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         require(tokensGenerated <= saleFunds);
 
         IERC20Token token = IERC20Token(_token);
-        uint256 balance = token.balanceOf(address(this));
+        uint256 balance = token.balanceOf(msg.sender);
         require(_usdtAmount <= balance);
 
         // check: the amount of approve is enough.
@@ -404,6 +410,25 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         }
         saleFunds = saleFunds.sub(tokensGenerated);
         emit NewSale(msg.sender, toFund, tokensGenerated, seedPhase);
+    }
+
+    // @dev burn erc20 token and exchange mainnet token.
+    function upgrade(uint256 amount) public {
+        require(amount != 0, "DSGT: upgradable amount should be more than 0");
+        address holder = _msgSender();
+
+        // Burn tokens to be upgraded
+        _burn(holder, amount);
+
+        // Remember how many tokens we have upgraded
+        _totalUpgraded = _totalUpgraded.add(amount);
+
+        // Upgrade agent upgrades/reissues tokens
+        emit Upgrade(holder, amount);
+    }
+
+    function totalUpgraded() public view returns (uint256) {
+        return _totalUpgraded;
     }
 
     function withdraw(address _token, address payable _recipient) public onlyOwner {
