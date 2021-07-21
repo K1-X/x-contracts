@@ -22,12 +22,11 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
     uint8 public decimals;
     uint256 public totalSupplyLimit;
 
-
     mapping (address => uint256) private _balances;
     mapping (address => mapping (address => uint256)) private _allowances;
     uint256 private _totalSupply;
 
-    enum RoleType { Invalid, FUNDER, DEVELOPER, MARKETER, COMMUNITY, SEED }
+    enum RoleType { Invalid, FUNDER, TEAM, ADVISORS, PARTNERSHIP, COMMUNITY, SEED, PRIVATE, AIRDROP}
 
     struct FreezeData {
         bool initialzed;
@@ -39,32 +38,17 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
     mapping (address => RoleType) private _roles;
     mapping (uint256 => Rules.Rule) private _rules;
     mapping (address => FreezeData) private _freeze_datas;
-    uint256 public monthIntervalBlock = 172800;    
-    uint256 public yearIntervalBlock = 2102400;    
+    uint256 public monthIntervalBlock = 2;    // 172800
+    uint256 public yearIntervalBlock = 10;    // 2102400
+    uint256 public sixMonthIntervalBlock = 6; // six month block: 1036800
 
     bool public seedPause = true;
     uint256 public seedMeltStartBlock = 0;       
 
     bool public ruleReady;
 
-    // exchanger part
-    uint256 public ethRatio;            // ratio for eth, eg. 1000*10^(diff decimal)
-    uint256 public usdtRatio;           // ratio for usdt, eg. 1000*10^(diff decimal)
-    uint256 public saleFunds;           // current total to be sold.
-    bool    public saleSwitch;          // true: exchangeable, false: not exchangeable, default = false.
-    uint256 public saleEndBlock;        // The end block height of the current sale stage.
-    bool    public seedPhase = true;    // true: seed, false (private/public)
-
-    mapping (address => uint256) public lastCallBlock;
-
     // upgrade part
     uint256 private _totalUpgraded;    
-
-    modifier canBuy() {
-        require(saleSwitch, "saleSwitch is false");
-        require(saleFunds != 0 && ethRatio != 0 && usdtRatio != 0);
-        _;
-    }
 
     modifier onlyReady(){
         require(ruleReady, "ruleReady is false");
@@ -92,6 +76,16 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         _;
     }
 
+    modifier roleCanMint(uint256 _role, uint256 _amount) {
+        // for airdrop, use community amount.
+        if(_role == uint256(RoleType.AIRDROP)) {
+            _role = uint256(RoleType.COMMUNITY);
+        }
+        require(_amount <= _rules[_role].remainAmount, "RoleMint: Exceed the maximum circulation");
+        _;
+        _rules[_role].remainAmount = _rules[_role].remainAmount.sub(_amount);
+    }
+
     modifier canBatchMint(uint256[] memory _amounts) {
         uint256 mintAmount = 0;
         for (uint256 i = 0; i < _amounts.length; i++) {
@@ -101,17 +95,27 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         _;
     }
 
+    modifier roleCanBatchMint(uint256 _role, uint256[] memory _amounts) {
+        if(_role == uint256(RoleType.AIRDROP)) {
+            _role = uint256(RoleType.COMMUNITY);
+        }
+        uint256 mintAmount = 0;
+        for (uint256 i = 0; i < _amounts.length; i++) {
+            mintAmount = mintAmount.add(_amounts[i]);
+        }
+        require(mintAmount <= _rules[_role].remainAmount, "RoleBatchMint: Exceed the maximum circulation");
+        _;
+        _rules[_role].remainAmount = _rules[_role].remainAmount.sub(mintAmount);
+    }
+
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
     event Freeze(address indexed from, uint256 amount);
     event Melt(address indexed from, uint256 amount);
     event MintFrozen(address indexed to, uint256 amount);
-    event FrozenTransfer(address indexed from, address indexed to, uint256 value);
     event Claim(address indexed from, uint256 amount);
 
-    event NewSale(address indexed _th, uint256 _amount, uint256 _tokens, bool _locked);
-    event SaleInfo(address indexed _operator, uint256 _ethRatio, uint256 _usdtAmount, uint256 _saleAmount, bool _seedPhase);
     event Withdrawal(address indexed src, uint wad);
 
     // 
@@ -123,16 +127,25 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         decimals = 18;
         totalSupplyLimit = 1024 * 1024 * 1024 * 10 ** uint256(decimals);
         //mint(msg.sender, 0);
-        ruleReady = false;
+        //ruleReady = false;
+        //_readyRule();
     }
 
     function readyRule() onlyMinter public {
+    //function _readyRule() internal {
         ruleReady = true;
-        _rules[uint256(RoleType.FUNDER)].setRule(yearIntervalBlock, 10);
-        _rules[uint256(RoleType.DEVELOPER)].setRule(monthIntervalBlock, 2);
-        _rules[uint256(RoleType.MARKETER)].setRule(monthIntervalBlock, 1);
-        _rules[uint256(RoleType.COMMUNITY)].setRule(monthIntervalBlock, 10);
-        _rules[uint256(RoleType.SEED)].setRule(monthIntervalBlock, 10);
+        // Set a maximum amount for each role.
+        // Unlocked annually or monthly, the proportion of unlocked monthly or yearly.
+        _rules[uint256(RoleType.FUNDER)].setRule(yearIntervalBlock, 10, 7546257537 * 10 ** (uint256(decimals)-2));   // 107803679.1 * 70%
+        _rules[uint256(RoleType.TEAM)].setRule(monthIntervalBlock, 2, 560858304356 * 10 ** (uint256(decimals)-4));      // 57230439.22 * 98%
+        _rules[uint256(RoleType.ADVISORS)].setRule(monthIntervalBlock, 2, 13153337344 * 10 ** (uint256(decimals)-3)); // 13421772.8 * 98%
+        _rules[uint256(RoleType.PARTNERSHIP)].setRule(monthIntervalBlock, 20, 4563402752 * 10 ** (uint256(decimals)-2)); // 45634027.52 (sixmonth behind start release) 
+        _rules[uint256(RoleType.COMMUNITY)].setRule(monthIntervalBlock, 20, 3489660928*10**(uint256(decimals)-2)); // 34896609.28 (sixmonth behind start release) 
+        _rules[uint256(RoleType.SEED)].setRule(monthIntervalBlock, 10, 3575560274*10** (uint256(decimals)-2));   // 35755602.74
+        _rules[uint256(RoleType.PRIVATE)].setRule(monthIntervalBlock, 10, 536870912*10**(uint256(decimals)-1)); // 53687091.2
+
+        // for free token and set rules.
+        _rules[uint256(RoleType.AIRDROP)].setRule(yearIntervalBlock, 2, 0);
     }
 
     function roleType(address account) public view returns (uint256) {
@@ -147,27 +160,39 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         return _freeze_datas[account].lastFreezeBlock;
     }
 
-    function freezeAmount(address account) public view returns(uint256) {
+    function queryFreezeAmount(address account) public view returns(uint256) {
         uint256 lastFreezeBlock = _freeze_datas[account].lastFreezeBlock;
-        if(uint256(_roles[account]) == uint256(RoleType.SEED)) {
+        if(uint256(_roles[account]) == uint256(RoleType.SEED) || uint256(_roles[account]) == uint256(RoleType.PRIVATE)) {
+            if(seedPause){
+                return 0;
+            }
             require(!seedPause, "seed pause is true, can't to claim");
             if(seedMeltStartBlock != 0 && seedMeltStartBlock > lastFreezeBlock) {
                 lastFreezeBlock = seedMeltStartBlock;
             }
         }
         uint256 amount = _rules[uint256(_roles[account])].freezeAmount(_freeze_datas[account].frozenAmount , _freeze_datas[account].startBlock, lastFreezeBlock, block.number);
-        if(amount > _frozen_balanceOf(msg.sender)) {
-            amount = _frozen_balanceOf(msg.sender);
+        uint256 balance = _frozen_balanceOf(account);
+        if(amount > balance) {
+            amount = balance;
         }
         return amount;
     }
 
     function totalSupply() public view returns (uint256) {
+        return totalSupplyLimit;
+    }
+
+    function currentTotalSupply() public view returns(uint256) {
         return _totalSupply;
     }
 
     function balanceOf(address account) public view returns (uint256) {
         return _balances[account].add(_frozen_balanceOf(account));
+    }
+
+    function roleRemainAmount(uint256 _role) public view returns(uint256) {
+        return _rules[_role].remainAmount;
     }
 
     function frozenBalanceOf(address account) public view returns (uint256) {
@@ -178,6 +203,15 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         require(recipient != address(this), "can't transfer tokens to the contract address");
 
         _transfer(msg.sender, recipient, amount);
+        return true;
+    }
+
+    function transferBatch(address[] memory recipients, uint256[] memory amounts) public canTransfer returns (bool) {
+        require(recipients.length > 0, "transferBatch: recipient should be to at least one address");
+        require(recipients.length == amounts.length, "transferBatch: recipients and amounts must be equal");
+        for (uint256 i = 0; i < recipients.length; i++) {
+            _transfer(msg.sender, recipients[i], amounts[i]);
+        }
         return true;
     }
 
@@ -209,12 +243,10 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         return true;
     }
 
-
     function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
         _approve(msg.sender, spender, _allowances[msg.sender][spender].add(addedValue));
         return true;
     }
-
 
     function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
         _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue));
@@ -234,14 +266,6 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         _burnFrom(account, amount);
     }
 
-    function destroy(address account, uint256 amount) public onlyOwner {
-        _burn(account, amount);
-    }
-
-    function destroyFrozen(address account, uint256 amount) public onlyOwner {
-        _burnFrozen(account, amount);
-    }
-
     function mintBatchToken(address[] calldata accounts, uint256[] calldata amounts) external onlyMinter canBatchMint(amounts) returns (bool) {
         require(accounts.length > 0, "mintBatchToken: transfer should be to at least one address");
         require(accounts.length == amounts.length, "mintBatchToken: recipients.length != amounts.length");
@@ -249,31 +273,6 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
             _mint(accounts[i], amounts[i]);
         }
 
-        return true;
-    }
-
-    function transferFrozenToken(address from, address to, uint256 amount) public onlyOwner returns (bool) {
-        require(from != address(0), "ERC20: transfer from the zero address");
-        require(to != address(0), "ERC20: transfer to the zero address");
-
-        _frozen_sub(from, amount);
-        _frozen_add(to, amount);
-
-        emit FrozenTransfer(from, to, amount);
-        emit Transfer(from, to, amount);
-
-        return true;
-    }
-
-    function freezeTokens(address account, uint256 amount) public onlyOwner returns (bool) {
-        _freeze(account, amount);
-        emit Transfer(account, address(this), amount);
-        return true;
-    }
-
-    function meltTokens(address account, uint256 amount) public onlyMelter returns (bool) {
-        _melt(account, amount);
-        emit Transfer(address(this), account, amount);
         return true;
     }
 
@@ -292,7 +291,7 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         return true;
     }
 
-    function mintFrozenTokensForFunder(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) returns (bool) {
+    function mintFrozenTokensForFunder(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) roleCanMint(uint256(RoleType.FUNDER), amount) returns (bool) {
         require(!_freeze_datas[account].initialzed, "Funder: specified account already initialzed");
         _roles[account] = RoleType.FUNDER;
         _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
@@ -300,122 +299,79 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         return true;
     }
 
-    function mintFrozenTokensForDeveloper(address account, uint256 amount) public onlyMinter  onlyReady canMint(amount) returns (bool) {
-        require(!_freeze_datas[account].initialzed, "Developer: specified account already initialzed");
-        _roles[account] = RoleType.DEVELOPER;
+    function mintFrozenTokensForTeam(address account, uint256 amount) public onlyMinter  onlyReady canMint(amount) roleCanMint(uint256(RoleType.TEAM), amount) returns (bool) {
+        require(!_freeze_datas[account].initialzed, "Team: specified account already initialzed");
+        _roles[account] = RoleType.TEAM;
         _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
-    function mintFrozenTokensForMarketer(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) returns (bool) {
-        require(!_freeze_datas[account].initialzed, "Marketer: specified account already initialzed");
-        _roles[account] = RoleType.MARKETER;
+    function mintFrozenTokensForAdvisors(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) roleCanMint(uint256(RoleType.ADVISORS), amount) returns (bool) {
+        require(!_freeze_datas[account].initialzed, "Advisors: specified account already initialzed");
+        _roles[account] = RoleType.ADVISORS;
         _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
         _mintfrozen(account, amount);
         return true;
     }
 
-    function mintFrozenTokensForCommunity(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) returns (bool) {
+    ///@notice release starts after six months.
+    function mintFrozenTokensForPartnership(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) roleCanMint(uint256(RoleType.PARTNERSHIP), amount) returns (bool) {
+        require(!_freeze_datas[account].initialzed, "Partnership: specified account already initialzed");
+        _roles[account] = RoleType.PARTNERSHIP;
+        // release starts after six months.
+        uint256 startBn = block.number + sixMonthIntervalBlock;
+        _freeze_datas[account] = FreezeData(true, amount, startBn , startBn);
+        _mintfrozen(account, amount);
+        return true;
+    }
+
+    ///@notice release starts after six months.
+    function mintFrozenTokensForCommunity(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) roleCanMint(uint256(RoleType.COMMUNITY), amount) returns (bool) {
         require(!_freeze_datas[account].initialzed, "Community: specified account already initialzed");
         _roles[account] = RoleType.COMMUNITY;
-        _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
+        uint256 startBn = block.number + sixMonthIntervalBlock;
+        _freeze_datas[account] = FreezeData(true, amount, startBn, startBn);
         _mintfrozen(account, amount);
         return true;
     }
 
-    function mintFrozenTokensForSeed(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) returns (bool) {
+    function mintFrozenTokensForSeed(address account, uint256 amount) public onlyMinter onlyReady canMint(amount) roleCanMint(uint256(RoleType.SEED), amount) returns (bool) {
         _mintFrozenTokensForSeed(account, amount);
         return true;
     }
 
-    function meltBatchTokens(address[] calldata accounts, uint256[] calldata amounts) external onlyMelter returns (bool) {
-        require(accounts.length > 0, "mintBatchFrozenTokens: transfer should be to at least one address");
-        require(accounts.length == amounts.length, "mintBatchFrozenTokens: recipients.length != amounts.length");
+    function mintBatchFrozenTokensForSeed(address[] memory accounts, uint256[] memory amounts) public onlyMinter onlyReady canBatchMint(amounts)  roleCanBatchMint(uint256(RoleType.SEED), amounts) returns (bool) {
+        require(accounts.length > 0, "mintBatchFrozenTokensForSeed: transfer should be to at least one address");
+        require(accounts.length == amounts.length, "mintBatchFrozenTokensForSeed: recipients.length != amounts.length");
         for (uint256 i = 0; i < accounts.length; i++) {
-            _melt(accounts[i], amounts[i]);
-            emit Transfer(address(this), accounts[i], amounts[i]);
+            _mintFrozenTokensForSeed(accounts[i], amounts[i]);
         }
-
         return true;
     }
 
-    function setSaleSwitch(bool _saleSwitch) external onlyMinter {
-        saleSwitch = _saleSwitch;
-    }
-
-    function updateSaleInfo(uint256 _ethRatio, uint256 _usdtRatio, uint256 _saleFunds, bool _seedPhase) external onlyMinter {
-        require(_ethRatio != 0 , "ethRatio cannot be 0");
-        require(_usdtRatio != 0 , "usdtRatio cannot be 0");
-        require(_saleFunds > 0, "saleFunds must grater than 0");
-        ethRatio = _ethRatio;
-        usdtRatio = _usdtRatio;
-        saleFunds = _saleFunds;
-        seedPhase = _seedPhase;
-        emit SaleInfo(msg.sender, _ethRatio, _usdtRatio, _saleFunds, _seedPhase);
-    }
-
-    /// @dev exchange by eth
-    function buyEth() external payable canBuy {
-        //require(!paused(), "Paused is true");
-        require(msg.value > 0, "msg.value not greater than 0");
-        require(ethRatio != 0, "ethRatio cannot be 0");
-        // Do not allow contracts to game the system
-        require(!isContract(msg.sender));
-        require(getBlockNumber().sub(lastCallBlock[msg.sender]) >= maxCallFrequency);
-        lastCallBlock[msg.sender] = getBlockNumber();
-
-        uint256 toFund = msg.value;
-        uint256 tokensGenerated = toFund.mul(ethRatio);
-        
-        require(tokensGenerated <= saleFunds);
-        
-        // phase: seed, private, public
-        if (seedPhase) {
-            require(_mintFrozenTokensForSeed(msg.sender, tokensGenerated));
-        } else {
-            _mint(msg.sender, tokensGenerated);
+    function mintBatchFrozenTokensForPrivate(address[] memory accounts, uint256[] memory amounts) public onlyMinter onlyReady canBatchMint(amounts)  roleCanBatchMint(uint256(RoleType.PRIVATE), amounts) returns (bool) {
+        require(accounts.length > 0, "mintBatchFrozenTokensForPrivate: transfer should be to at least one address");
+        require(accounts.length == amounts.length, "mintBatchFrozenTokensForPrivate: recipients.length != amounts.length");
+        for (uint256 i = 0; i < accounts.length; i++) {
+            _mintFrozenTokensForPrivate(accounts[i], amounts[i]);
         }
-        saleFunds = saleFunds.sub(tokensGenerated);
-        emit NewSale(msg.sender, toFund, tokensGenerated, seedPhase);
+        return true;
     }
 
-    /// @dev exchange by usdt
-    function buyUSDT(uint256 _usdtAmount, address _token)  external canBuy {
-        require(usdtRatio != 0, "usdtRatio cannot be 0");
-        require(_usdtAmount > 0, "usdtAmount not greater than 0");
-        // Do not allow contracts to game the system
-        require(!isContract(msg.sender));
-        require(getBlockNumber().sub(lastCallBlock[msg.sender]) >= maxCallFrequency);
-        lastCallBlock[msg.sender] = getBlockNumber();
-
-        uint256 toFund = _usdtAmount;
-        uint256 tokensGenerated = toFund.mul(usdtRatio);
-        
-        require(tokensGenerated <= saleFunds);
-
-        IERC20Token token = IERC20Token(_token);
-        uint256 balance = token.balanceOf(msg.sender);
-        require(_usdtAmount <= balance);
-
-        // check: the amount of approve is enough.
-        require(token.allowance(msg.sender, address(this)) >= _usdtAmount);
-        token.transferFrom(msg.sender, address(this), _usdtAmount);
-        
-        // phase: seed, private, public
-        if (seedPhase) {
-            require(_mintFrozenTokensForSeed(msg.sender, tokensGenerated));
-        } else {
-            _mint(msg.sender, tokensGenerated);
+    function mintBatchFrozenTokensForAirdrop(address[] memory accounts, uint256[] memory amounts) public onlyMinter onlyReady canBatchMint(amounts) roleCanBatchMint(uint256(RoleType.AIRDROP), amounts) returns (bool) {
+        require(accounts.length > 0, "mintBatchFrozenTokensForAirdrop: transfer should be to at least one address");
+        require(accounts.length == amounts.length, "mintBatchFrozenTokensForAirdrop: recipients.length != amounts.length");
+        for (uint256 i = 0; i < accounts.length; i++) {
+            _mintFrozenTokensForAirdrop(accounts[i], amounts[i]);
         }
-        saleFunds = saleFunds.sub(tokensGenerated);
-        emit NewSale(msg.sender, toFund, tokensGenerated, seedPhase);
+        return true;
     }
 
     // @dev burn erc20 token and exchange mainnet token.
     function upgrade(uint256 amount) public {
         require(amount != 0, "DSGT: upgradable amount should be more than 0");
-        address holder = _msgSender();
+        address holder = msg.sender;
 
         // Burn tokens to be upgraded
         _burn(holder, amount);
@@ -463,7 +419,7 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
     function claimTokens() public canClaim returns (bool) {
         //Rules.Rule storage rule = _rules[uint256(_roles[msg.sender])];
         uint256 lastFreezeBlock = _freeze_datas[msg.sender].lastFreezeBlock;
-        if(uint256(_roles[msg.sender]) == uint256(RoleType.SEED)) {
+        if(uint256(_roles[msg.sender]) == uint256(RoleType.SEED) || uint256(_roles[msg.sender]) == uint256(RoleType.PRIVATE) ) {
             require(!seedPause, "seed pause is true, can't to claim");
             if(seedMeltStartBlock != 0 && seedMeltStartBlock > lastFreezeBlock) {
                 lastFreezeBlock = seedMeltStartBlock;
@@ -491,6 +447,24 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
     function _mintFrozenTokensForSeed(address account, uint256 amount) internal returns (bool) {
         require(!_freeze_datas[account].initialzed, "Seed: specified account already initialzed");
         _roles[account] = RoleType.SEED;
+        _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
+        _mintfrozen(account, amount);
+        return true;
+    }
+
+    function _mintFrozenTokensForPrivate(address account, uint256 amount) internal returns (bool) {
+        require(!_freeze_datas[account].initialzed, "Private: specified account already initialzed");
+        _roles[account] = RoleType.PRIVATE;
+        _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
+        _mintfrozen(account, amount);
+        return true;
+    }
+
+    /// @dev for airbon
+    function _mintFrozenTokensForAirdrop(address account, uint256 amount) internal returns (bool) {
+        // only init once for a address.
+        require(!_freeze_datas[account].initialzed, "Airdrop: specified account already initialzed");
+        _roles[account] = RoleType.AIRDROP;
         _freeze_datas[account] = FreezeData(true, amount, block.number, block.number);
         _mintfrozen(account, amount);
         return true;

@@ -9,19 +9,26 @@ library Rules {
     struct Rule {               
         uint256 intervalFreezeBlock;        
         uint256 percent;                   
-        bool    initRule;                   
+        bool    initRule;     
+        uint256 maxAmount;
+        uint256 remainAmount;              
     }
 
-    function setRule(Rule storage rule, uint256 _intervalFreezeBlock, uint256 _percent) internal {
+    function setRule(Rule storage rule, uint256 _intervalFreezeBlock, uint256 _percent, uint256 _maxAmount) internal {
         require(_intervalFreezeBlock > 0);
         require(_percent > 0);
         rule.intervalFreezeBlock = _intervalFreezeBlock;
         rule.percent = _percent;
         rule.initRule = true;
+        rule.maxAmount = _maxAmount;
+        rule.remainAmount = _maxAmount;
     }
 
     function freezeAmount(Rule storage rule, uint256 baseAmount, uint256 startFrozenBlock, uint256 lastFreezeBlock, uint256 currentBlock) internal view returns(uint256) {
         require(startFrozenBlock <= lastFreezeBlock, "startFrozenBlockmust be greater than or equal to lastFreezeBlock");
+        if(currentBlock < lastFreezeBlock){
+            return 0;
+        }
         require(currentBlock >= lastFreezeBlock);
         require(baseAmount > 0, "baseAmount cant not be 0");
         require(rule.percent > 0);
