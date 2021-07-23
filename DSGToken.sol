@@ -2,7 +2,6 @@ pragma solidity ^0.5.11;
 
 import './AccountFrozenBalances.sol';
 import './Ownable.sol';
-import './Whitelisted.sol';
 import './Burnable.sol';
 import './Pausable.sol';
 import './Mintable.sol';
@@ -11,7 +10,7 @@ import "./Rules.sol";
 import "./TokenRecipient.sol";
 import "./IERC20Token.sol";
 
-contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Pausable, Mintable, Meltable {
+contract DSGToken is AccountFrozenBalances, Ownable, Burnable, Pausable, Mintable, Meltable {
     using SafeMath for uint256;
     using Rules for Rules.Rule;
 
@@ -38,9 +37,9 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
     mapping (address => RoleType) private _roles;
     mapping (uint256 => Rules.Rule) private _rules;
     mapping (address => FreezeData) private _freeze_datas;
-    uint256 public monthIntervalBlock = 2;    // 172800
-    uint256 public yearIntervalBlock = 10;    // 2102400
-    uint256 public sixMonthIntervalBlock = 6; // six month block: 1036800
+    uint256 public monthIntervalBlock = 2;    // 172800 (30d*24h*60m*60s/15s)
+    uint256 public yearIntervalBlock = 10;    // 2102400 (365d*24h*60m*60s/15s)
+    uint256 public sixMonthIntervalBlock = 6; // six month block: 1036800 (6m*30d*24h*60m*60s/15s)
 
     bool public seedPause = true;
     uint256 public seedMeltStartBlock = 0;       
@@ -65,9 +64,7 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
     }
 
     modifier canTransfer() {
-        if(paused()){
-            require (isWhitelisted(msg.sender) == true, "can't perform an action");
-        }
+        require(!paused(), "paused is true");
         _;
     }
 
@@ -91,7 +88,7 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         for (uint256 i = 0; i < _amounts.length; i++) {
             mintAmount = mintAmount.add(_amounts[i]);
         }
-        require(mintAmount <= totalSupplyLimit, "BatchMint: Exceed the maximum circulation");
+        require((_totalSupply + mintAmount) <= totalSupplyLimit, "BatchMint: Exceed the maximum circulation");
         _;
     }
 
@@ -117,6 +114,7 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
     event Claim(address indexed from, uint256 amount);
 
     event Withdrawal(address indexed src, uint wad);
+    event FrozenTransfer(address indexed from, address indexed to, uint256 value);
 
     // 
     event Upgrade(address indexed from, uint256 _value);
@@ -126,8 +124,6 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         symbol = _symbol;
         decimals = 18;
         totalSupplyLimit = 1024 * 1024 * 1024 * 10 ** uint256(decimals);
-        //mint(msg.sender, 0);
-        //ruleReady = false;
         //_readyRule();
     }
 
@@ -143,9 +139,6 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         _rules[uint256(RoleType.COMMUNITY)].setRule(monthIntervalBlock, 20, 3489660928*10**(uint256(decimals)-2)); // 34896609.28 (sixmonth behind start release) 
         _rules[uint256(RoleType.SEED)].setRule(monthIntervalBlock, 10, 3575560274*10** (uint256(decimals)-2));   // 35755602.74
         _rules[uint256(RoleType.PRIVATE)].setRule(monthIntervalBlock, 10, 536870912*10**(uint256(decimals)-1)); // 53687091.2
-
-        // for free token and set rules.
-        _rules[uint256(RoleType.AIRDROP)].setRule(yearIntervalBlock, 2, 0);
     }
 
     function roleType(address account) public view returns (uint256) {
@@ -240,6 +233,26 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
 
         _transfer(sender, recipient, amount);
         _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount));
+        return true;
+    }
+
+    function transferFrozenToken(address to, uint256 amount) public returns (bool) {
+        _transferFrozen(msg.sender, to, amount);
+        return true;
+    }
+
+    function transferBatchFrozenTokens(address[] calldata accounts, uint256[] calldata amounts) external returns (bool) {
+        require(accounts.length > 0, "transferBatchFrozenTokens: transfer should be to at least one address");
+        require(accounts.length == amounts.length, "transferBatchFrozenTokens: recipients.length != amounts.length");
+        for (uint256 i = 0; i < accounts.length; i++) {
+            _transferFrozen(msg.sender, accounts[i], amounts[i]);
+        }
+        return true;
+    }
+
+    function meltTokens(address account, uint256 amount) public onlyMelter returns (bool) {
+        _melt(account, amount);
+        emit Transfer(address(this), account, amount);
         return true;
     }
 
@@ -479,6 +492,17 @@ contract DSGToken is AccountFrozenBalances, Ownable, Whitelisted, Burnable, Paus
         emit Transfer(sender, recipient, amount);
     }
 
+    function _transferFrozen(address sender, address to, uint256 amount) internal {
+        require(to != address(0), "ERC20-Frozen: transfer from the zero address");
+        require(amount != 0, "ERC20-Frozen: transfer amount is zero");
+        require(uint256(_roles[sender]) == uint256(RoleType.COMMUNITY), "ERC20-Frozen: msg.sender is not belong to community");
+        require(_frozen_balanceOf(sender) >= amount, "frozen amount should greater than amount");
+        _frozen_sub(sender, amount);
+        _frozen_add(to, amount);
+
+        emit FrozenTransfer(msg.sender, to, amount);
+        emit Transfer(msg.sender, to, amount);
+    }
 
     function _mint(address account, uint256 amount) internal {
         require(account != address(0), "ERC20: mint to the zero address");
