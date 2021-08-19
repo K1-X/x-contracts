@@ -34,9 +34,9 @@ contract DSGToken is AccountFrozenBalances, Ownable, Mintable {
     mapping (address => RoleType) private _roles;
     mapping (uint256 => Rules.Rule) private _rules;
     mapping (address => FreezeData) private _freeze_datas;
-    uint256 public monthIntervalBlock = 40;    // 172800 (30d*24h*60m*60s/15s)
-    uint256 public yearIntervalBlock = 480;    // 2102400 (365d*24h*60m*60s/15s)
-    uint256 public sixMonthIntervalBlock = 240; // six month block: 1036800 (6m*30d*24h*60m*60s/15s)
+    uint256 public monthIntervalBlock = 172800;    // 172800 (30d*24h*60m*60s/15s)
+    uint256 public yearIntervalBlock = 2102400;    // 2102400 (365d*24h*60m*60s/15s)
+    uint256 public sixMonthIntervalBlock = 1036800; // six month block: 1036800 (6m*30d*24h*60m*60s/15s)
 
     bool public seedPause = true;
     uint256 public seedMeltStartBlock = 0;       
@@ -128,8 +128,8 @@ contract DSGToken is AccountFrozenBalances, Ownable, Mintable {
         _rules[uint256(RoleType.FUNDER)].setRule(yearIntervalBlock, 10, 7546257537 * 10 ** (uint256(decimals)-2));   // 107803679.1 * 70%
         _rules[uint256(RoleType.TEAM)].setRule(monthIntervalBlock, 2, 560858304356 * 10 ** (uint256(decimals)-4));      // 57230439.22 * 98%
         _rules[uint256(RoleType.ADVISORS)].setRule(monthIntervalBlock, 2, 13153337344 * 10 ** (uint256(decimals)-3)); // 13421772.8 * 98%
-        _rules[uint256(RoleType.PARTNERSHIP)].setRule(monthIntervalBlock, 20, 4563402752 * 10 ** (uint256(decimals)-2)); // 45634027.52 (sixmonth behind start release) 
-        _rules[uint256(RoleType.COMMUNITY)].setRule(monthIntervalBlock, 20, 3489660928*10**(uint256(decimals)-2)); // 34896609.28 (sixmonth behind start release) 
+        _rules[uint256(RoleType.PARTNERSHIP)].setRule(monthIntervalBlock, 20, 4563402752 * 10 ** (uint256(decimals)-2)); // 45634027.52 (sixmonth after ido) 
+        _rules[uint256(RoleType.COMMUNITY)].setRule(monthIntervalBlock, 20, 3489660928*10**(uint256(decimals)-2)); // 34896609.28 (sixmonth after ido) 
         _rules[uint256(RoleType.SEED)].setRule(monthIntervalBlock, 10, 3575560274*10** (uint256(decimals)-2));   // 35755602.74
         _rules[uint256(RoleType.PRIVATE)].setRule(monthIntervalBlock, 10, 536870912*10**(uint256(decimals)-1)); // 53687091.2
     }
